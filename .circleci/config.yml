@@ -1,6 +1,5 @@
 version: 2.1
 
-# Importando o orb do Android
 orbs:
   android: circleci/android@2.1.1
 
@@ -9,20 +8,17 @@ executors:
     docker:
       - image: circleci/android:2022.04.1
     environment:
-      # Definindo variáveis de ambiente para o Android
       GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4096m -Dkotlin.compiler.execution.strategy=in-process'
       ANDROID_HOME: /opt/android/sdk
       ANDROID_SDK_ROOT: /opt/android/sdk
       JAVA_HOME: /usr/local/openjdk-11
 
 jobs:
-  # Job para executar os testes unitários
   unit_tests:
     executor: android-executor
     steps:
       - checkout
 
-      # Baixar dependências
       - android/gradle-cache@2:
           path: ~/.gradle/caches
 
@@ -34,17 +30,14 @@ jobs:
           path: ~/.gradle/caches
           write: true
 
-  # Job para executar os testes de UI com Jetpack Compose
   ui_tests:
     executor: android-executor
     steps:
       - checkout
 
-      # Baixar dependências
       - android/gradle-cache@2:
           path: ~/.gradle/caches
 
-      # Configurar AVD (Android Virtual Device) para rodar testes de UI
       - android/setup:
           api-level: 30
           target: default
@@ -58,13 +51,11 @@ jobs:
           path: ~/.gradle/caches
           write: true
 
-  # Job para build da aplicação
   build:
     executor: android-executor
     steps:
       - checkout
 
-      # Baixar dependências
       - android/gradle-cache@2:
           path: ~/.gradle/caches
 
