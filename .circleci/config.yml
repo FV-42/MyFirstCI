@@ -1,23 +1,89 @@
-version: 2
-jobs:
-  build:
-    working_directory: ~/code
+version: 2.1
+
+# Importando o orb do Android
+orbs:
+  android: circleci/android@2.1.1
+
+executors:
+  android-executor:
     docker:
-      - image: circleci/android:api-28
+      - image: circleci/android:2022.04.1
     environment:
-      JVM_OPTS: -Xmx3200m
+      # Definindo variáveis de ambiente para o Android
+      GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4096m -Dkotlin.compiler.execution.strategy=in-process'
+      ANDROID_HOME: /opt/android/sdk
+      ANDROID_SDK_ROOT: /opt/android/sdk
+      JAVA_HOME: /usr/local/openjdk-11
+
+jobs:
+  # Job para executar os testes unitários
+  unit_tests:
+    executor: android-executor
     steps:
       - checkout
-      - restore_cache:
-          key: jars-{{ checksum "build.gradle" }}-{{ checksum "app/build.gradle" }}
-      - run:
-          name: Download Dependencies
-          command: ./gradlew androidDependencies
-      - save_cache:
-          paths:
-            - ~/.gradle
-          key: jars-{{ checksum "build.gradle" }}-{{ checksum "app/build.gradle" }}
+
+      # Baixar dependências
+      - android/gradle-cache@2:
+          path: ~/.gradle/caches
 
       - run:
-          name: Run Tests
-          command: ./gradlew test
+          name: Run Unit Tests
+          command: ./gradlew testDebugUnitTest
+
+      - android/gradle-cache@2:
+          path: ~/.gradle/caches
+          write: true
+
+  # Job para executar os testes de UI com Jetpack Compose
+  ui_tests:
+    executor: android-executor
+    steps:
+      - checkout
+
+      # Baixar dependências
+      - android/gradle-cache@2:
+          path: ~/.gradle/caches
+
+      # Configurar AVD (Android Virtual Device) para rodar testes de UI
+      - android/setup:
+          api-level: 30
+          target: default
+          build-tools: "30.0.3"
+
+      - run:
+          name: Run UI Tests
+          command: ./gradlew connectedAndroidTest
+
+      - android/gradle-cache@2:
+          path: ~/.gradle/caches
+          write: true
+
+  # Job para build da aplicação
+  build:
+    executor: android-executor
+    steps:
+      - checkout
+
+      # Baixar dependências
+      - android/gradle-cache@2:
+          path: ~/.gradle/caches
+
+      - run:
+          name: Build Application
+          command: ./gradlew assembleDebug
+
+      - android/gradle-cache@2:
+          path: ~/.gradle/caches
+          write: true
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - unit_tests
+      - ui_tests:
+          requires:
+            - unit_tests
+      - build:
+          requires:
+            - unit_tests
